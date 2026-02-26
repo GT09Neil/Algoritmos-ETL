@@ -33,28 +33,31 @@ from data_unifier import (
 # GEB/PFDAVAL/EXITO/NUTRESA/CELSIA dan 404 o respuesta sin timestamp en Yahoo;
 # se sustituyen por ETFs US para que el pipeline corra con 22 activos.
 ASSET_SYMBOLS = [
-    "VOO",   # Vanguard S&P 500
-    "SPY",   # SPDR S&P 500
-    "EEM",   # iShares MSCI Emerging Markets
-    "IVV",   # iShares Core S&P 500
-    "QQQ",   # Invesco QQQ
-    "VEA",   # Vanguard FTSE Developed
-    "VWO",   # Vanguard FTSE Emerging
-    "IEMG",  # iShares Core MSCI Emerging
-    "VTI",   # Vanguard Total Stock Market
-    "SCHF",  # Schwab International Equity
-    "VGK",   # Vanguard FTSE Europe
-    "EWZ",   # iShares MSCI Brazil
-    "EWG",   # iShares MSCI Germany
-    "FXI",   # iShares China Large-Cap
-    "EC",    # Ecopetrol (Colombia)
-    "ISA",   # ISA (Colombia)
-    "DIA",   # SPDR Dow Jones Industrial Average
-    "EFA",   # iShares MSCI EAFE
-    "IWD",   # iShares Russell 1000 Value
-    "VB",    # Vanguard Small-Cap
-    "VTV",   # Vanguard Value
-    "IWM",   # iShares Russell 2000
+    # ETFs grandes y estables
+    "VOO",
+    "SPY",
+    "IVV",
+    "QQQ",
+    "VTI",
+    "DIA",
+    "IWM",
+    "EFA",
+    "EEM",
+    "IWD",
+
+    # Internacionales
+    "VEA",
+    "VWO",
+    "VGK",
+    "EWZ",
+    "EWG",
+
+    # Colombia y LATAM que sí funcionan
+    "EC",      # Ecopetrol ADR
+    "AVAL",    # Grupo Aval ADR
+    "CIB",     # Bancolombia ADR
+    "PBR",     # Petrobras
+    "BBD",     # Banco Bradesco
 ]
 
 # Nombre del archivo de salida
@@ -66,7 +69,7 @@ def run_etl():
     Ejecuta el pipeline ETL completo.
 
     Algoritmo:
-      1. Calcular fecha actual y fecha hace 5 años (O(1)).
+      1. Calcular fecha actual y fecha hace 7 años (O(1)).
       2. Descargar datos por activo (fetch por símbolo; fallos se reportan).
       3. Por cada activo: detectar faltantes, detectar inconsistencias,
          forward fill en Close, eliminar filas inválidas.
@@ -77,11 +80,11 @@ def run_etl():
     """
     now = datetime.now(timezone.utc)
     end_date = now.strftime("%Y-%m-%d")
-    start_dt = now - timedelta(days=5 * 365)
+    start_dt = now - timedelta(days=7 * 365)
     start_date = start_dt.strftime("%Y-%m-%d")
 
     print("=== Pipeline ETL ===\n")
-    print("Rango de fechas: {} a {} (5 años)".format(start_date, end_date))
+    print("Rango de fechas: {} a {} (7 años)".format(start_date, end_date))
     print("Activos solicitados: {}".format(len(ASSET_SYMBOLS)))
 
     # --- Extracción: fetch_multiple_assets (tolera fallos por activo; exige mínimo 20) ---

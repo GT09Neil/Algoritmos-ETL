@@ -16,6 +16,7 @@ Complejidad de acceso por fecha en lista: O(n) búsqueda lineal; para unificaci�
 posterior se puede convertir a dict keyed by date si se necesita O(1).
 """
 
+import sys
 import json
 import time
 import urllib.parse
@@ -196,6 +197,19 @@ def _parse_chart_json(raw_bytes):
         })
     return rows
 
+def print_progress_bar(iteration, total, prefix='', suffix='', length=40):
+    """
+    Imprime barra de progreso en consola.
+    Complejidad: O(1) por actualización.
+    """
+    percent = ("{0:.1f}").format(100 * (iteration / float(total)))
+    filled_length = int(length * iteration // total)
+    bar = '█' * filled_length + '-' * (length - filled_length)
+    sys.stdout.write(f'\r{prefix} |{bar}| {percent}% {suffix}')
+    sys.stdout.flush()
+    if iteration == total:
+        print()
+
 
 def fetch_asset_data(symbol, start_date, end_date, delay_seconds=0.2):
     """
@@ -239,23 +253,30 @@ def fetch_multiple_assets(symbols, start_date, end_date, delay_seconds=0.3, min_
     registros por símbolo. Estructura de retorno: dict con listas; acceso por
     símbolo O(1).
     """
-    result = {}
-    errors = []
-    for sym in symbols:
+    results = {}
+    total = len(symbols)
+    success_count = 0
+
+    for i, symbol in enumerate(symbols, start=1):
+
+        print_progress_bar(i-1, total, prefix='Descargando:', suffix='Completado')
+
         try:
-            result[sym] = fetch_asset_data(sym, start_date, end_date, delay_seconds)
+            data = fetch_asset_data(symbol, start_date, end_date)
+            if data:
+                results[symbol] = data
+                success_count += 1
         except Exception as e:
-            result[sym] = []
-            errors.append((sym, str(e)))
-            continue
-    successful = sum(1 for v in result.values() if v)
-    if successful < min_success:
-        raise RuntimeError(
-            "Solo {} activos descargados (minimo {}). Errores: {}".format(
-                successful, min_success, errors
-            )
-        )
-    return result
+            print(f"\nError con {symbol}: {e}")
+
+        time.sleep(delay_seconds)
+
+    print_progress_bar(total, total, prefix='Descargando:', suffix='Completado')
+
+    if success_count < min_success:
+        raise Exception("No se alcanzó el mínimo de activos requeridos.")
+
+    return results
 
 
 # -----------------------------------------------------------------------------
