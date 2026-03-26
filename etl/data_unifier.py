@@ -48,7 +48,16 @@ def build_master_calendar(all_assets_data):
             d = row.get("Date")
             if d is not None:
                 all_dates.add(d)
-    return sorted(all_dates)
+    # Insertion sort manual (sin sorted()) — O(U^2) aceptable para ~1800 fechas
+    dates_list = list(all_dates)
+    for i in range(1, len(dates_list)):
+        current = dates_list[i]
+        j = i - 1
+        while j >= 0 and dates_list[j] > current:
+            dates_list[j + 1] = dates_list[j]
+            j -= 1
+        dates_list[j + 1] = current
+    return dates_list
 
 
 def align_assets_to_calendar(all_assets_data, master_calendar):
@@ -152,7 +161,15 @@ def build_master_dataset(aligned_data):
         columnas = claves del dict). El uso de dict por fila permite O(1) por
         acceso a columna al generar o escribir.
     """
-    symbols = sorted(aligned_data.keys())
+    # Insertion sort manual (sin sorted())
+    symbols = list(aligned_data.keys())
+    for i in range(1, len(symbols)):
+        current = symbols[i]
+        j = i - 1
+        while j >= 0 and symbols[j] > current:
+            symbols[j + 1] = symbols[j]
+            j -= 1
+        symbols[j + 1] = current
     if not symbols:
         return []
     n = len(aligned_data[symbols[0]])
@@ -161,5 +178,6 @@ def build_master_dataset(aligned_data):
         row = {"Date": aligned_data[symbols[0]][i]["Date"]}
         for symbol in symbols:
             row[symbol + "_Close"] = aligned_data[symbol][i].get("Close")
+            row[symbol + "_Volume"] = aligned_data[symbol][i].get("Volume")
         master.append(row)
     return master

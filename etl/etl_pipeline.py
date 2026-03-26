@@ -11,20 +11,33 @@ estructuras básicas y csv para exportar.
 """
 
 import csv
+import os
 from datetime import datetime, timedelta, timezone
 
-from data_fetcher import fetch_multiple_assets
-from data_cleaner import (
+from .data_fetcher import fetch_multiple_assets
+from .data_cleaner import (
     detect_missing_values,
     detect_inconsistencies,
     clean_with_forward_fill,
     remove_invalid_rows,
 )
-from data_unifier import (
+from .data_unifier import (
     build_master_calendar,
     align_assets_to_calendar,
     build_master_dataset,
 )
+
+
+def _isort(lst):
+    """Insertion sort manual sobre lista de strings. Sin sorted()."""
+    for i in range(1, len(lst)):
+        current = lst[i]
+        j = i - 1
+        while j >= 0 and lst[j] > current:
+            lst[j + 1] = lst[j]
+            j -= 1
+        lst[j + 1] = current
+    return lst
 
 # -----------------------------------------------------------------------------
 # Configuración: mínimo 20 activos (ETFs globales + acciones colombianas en Yahoo)
@@ -60,8 +73,9 @@ ASSET_SYMBOLS = [
     "BBD",     # Banco Bradesco
 ]
 
-# Nombre del archivo de salida
-OUTPUT_CSV = "dataset_maestro.csv"
+# Nombre del archivo de salida (relativo a la raíz del proyecto)
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUTPUT_CSV = os.path.join(_PROJECT_ROOT, "dataset_maestro.csv")
 
 
 def run_etl():
@@ -133,7 +147,12 @@ def run_etl():
     if not master_dataset:
         print("Dataset maestro vacío; no se escribe CSV.")
     else:
-        fieldnames = ["Date"] + [s + "_Close" for s in sorted(cleaned_data.keys())]
+        sym_keys = list(cleaned_data.keys())
+        _isort(sym_keys)
+        fieldnames = ["Date"]
+        for s in sym_keys:
+            fieldnames.append(s + "_Close")
+            fieldnames.append(s + "_Volume")
         with open(OUTPUT_CSV, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
             writer.writeheader()
@@ -144,19 +163,27 @@ def run_etl():
     # --- Reporte impreso ---
     print("\n--- Reporte ---")
     print("Registros por activo (después de limpieza):")
-    for symbol in sorted(cleaned_data.keys()):
+    _sorted_ck = list(cleaned_data.keys())
+    _isort(_sorted_ck)
+    for symbol in _sorted_ck:
         print("  {}: {}".format(symbol, len(cleaned_data[symbol])))
     print("\nValores faltantes detectados (antes de limpieza):")
-    for symbol in sorted(missing_per_asset.keys()):
+    _sorted_mk = list(missing_per_asset.keys())
+    _isort(_sorted_mk)
+    for symbol in _sorted_mk:
         count, positions = missing_per_asset[symbol]
         print("  {}: {} celdas faltantes en OHLCV (filas con al menos un faltante: {})".format(
             symbol, count, len(positions)))
     print("\nInconsistencias encontradas (High<Low, Close/Open fuera de rango):")
-    for symbol in sorted(inconsistencies_per_asset.keys()):
+    _sorted_ik = list(inconsistencies_per_asset.keys())
+    _isort(_sorted_ik)
+    for symbol in _sorted_ik:
         anom = inconsistencies_per_asset[symbol]
         print("  {}: {} anomalías".format(symbol, len(anom)))
     print("\nCorrecciones aplicadas (filas eliminadas por Close faltante):")
-    for symbol in sorted(corrections_applied.keys()):
+    _sorted_cak = list(corrections_applied.keys())
+    _isort(_sorted_cak)
+    for symbol in _sorted_cak:
         print("  {}: {} filas eliminadas".format(symbol, corrections_applied[symbol]))
     print("\nCalendario maestro: {} fechas únicas.".format(len(master_calendar)))
     print("Dataset maestro: {} filas, {} columnas (Date + _Close por activo).".format(
