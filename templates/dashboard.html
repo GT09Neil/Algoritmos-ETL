@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% set active_page = "dashboard" %}
+
+{% block title %}Dashboard — AlgoFinance{% endblock %}
+{% block page_title %}Dashboard Principal{% endblock %}
+
+{% block content %}
+<div class="grid-2">
+  <div class="card" id="card-heatmap">
+    <div class="card-header">
+      <h3>Matriz de Correlación (Pearson)</h3>
+      <span class="badge badge-info">{{ symbols|length }}×{{ symbols|length }}</span>
+    </div>
+    <div class="card-body">
+      <div class="chart-container" id="heatmap-container">
+        <canvas id="heatmap-canvas"></canvas>
+      </div>
+      <p class="chart-caption">Correlación entre retornos diarios de todos los activos del portafolio</p>
+    </div>
+  </div>
+
+  <div class="card" id="card-risk-summary">
+    <div class="card-header">
+      <h3>Clasificación de Riesgo</h3>
+    </div>
+    <div class="card-body">
+      <div class="risk-summary" id="risk-summary">
+        <div class="risk-pill conservador"><span class="pill-count" id="count-conservador">-</span> Conservador</div>
+        <div class="risk-pill moderado"><span class="pill-count" id="count-moderado">-</span> Moderado</div>
+        <div class="risk-pill agresivo"><span class="pill-count" id="count-agresivo">-</span> Agresivo</div>
+      </div>
+      <div class="risk-chart-container">
+        <canvas id="risk-bars-canvas"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card" id="card-candlestick">
+  <div class="card-header">
+    <h3>Gráfico de Velas</h3>
+    <div class="controls-inline">
+      <select id="candle-symbol" class="select-dark">
+        {% for s in symbols %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+      </select>
+      <select id="candle-days" class="select-dark">
+        <option value="60">60 días</option>
+        <option value="120">120 días</option>
+        <option value="250" selected>1 año</option>
+        <option value="500">2 años</option>
+      </select>
+      <button class="btn btn-primary" id="btn-load-candle" onclick="loadCandlestick()">Cargar</button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="chart-container chart-wide" id="candle-container">
+      <canvas id="candle-canvas"></canvas>
+    </div>
+    <p class="chart-caption">OHLC + SMA(20) <span class="sma20-legend">━━</span> y SMA(50) <span class="sma50-legend">━━</span></p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  loadHeatmap();
+  loadRiskSummary();
+  loadCandlestick();
+});
+</script>
+{% endblock %}

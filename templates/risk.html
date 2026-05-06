@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% set active_page = "risk" %}
+
+{% block title %}Riesgo — AlgoFinance{% endblock %}
+{% block page_title %}Clasificación de Riesgo{% endblock %}
+
+{% block content %}
+<div class="grid-3-mini" id="risk-pills" style="margin-bottom:1.5rem;">
+  <div class="card metric-card risk-conservador"><div class="metric-label">Conservador</div><div class="metric-value" id="rc-conservador">—</div><div class="metric-desc">Volatilidad ≤ P33</div></div>
+  <div class="card metric-card risk-moderado"><div class="metric-label">Moderado</div><div class="metric-value" id="rc-moderado">—</div><div class="metric-desc">P33 < Vol ≤ P66</div></div>
+  <div class="card metric-card risk-agresivo"><div class="metric-label">Agresivo</div><div class="metric-value" id="rc-agresivo">—</div><div class="metric-desc">Volatilidad > P66</div></div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Ranking por Volatilidad Anualizada</h3></div>
+  <div class="card-body">
+    <div class="chart-container chart-wide"><canvas id="vol-bars-canvas"></canvas></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Tabla de Clasificación</h3></div>
+  <div class="card-body">
+    <table class="data-table" id="risk-table">
+      <thead><tr><th>#</th><th>Activo</th><th>Volatilidad</th><th>%</th><th>Categoría</th></tr></thead>
+      <tbody id="risk-tbody"></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() { loadRiskPage(); });
+</script>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% set active_page = "patterns" %}
+
+{% block title %}Patrones — AlgoFinance{% endblock %}
+{% block page_title %}Detección de Patrones (Sliding Window){% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header"><h3>Configuración</h3></div>
+  <div class="card-body">
+    <div class="controls-inline">
+      <label>Activo:
+        <select id="pat-symbol" class="select-dark">
+          {% for s in symbols %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Ventana:
+        <select id="pat-window" class="select-dark">
+          <option value="10">10 días</option>
+          <option value="20" selected>20 días</option>
+          <option value="30">30 días</option>
+          <option value="50">50 días</option>
+        </select>
+      </label>
+      <button class="btn btn-primary" id="btn-patterns" onclick="loadPatterns()">Analizar</button>
+    </div>
+  </div>
+</div>
+
+<div id="pat-results" style="display:none;">
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header"><h3>Patrón 1: Días Consecutivos al Alza</h3></div>
+      <div class="card-body">
+        <div class="grid-3-mini">
+          <div class="mini-stat"><div class="mini-label">Total días al alza</div><div class="mini-value" id="pat-total-ups">—</div></div>
+          <div class="mini-stat"><div class="mini-label">Racha más larga</div><div class="mini-value" id="pat-max-streak">—</div></div>
+          <div class="mini-stat"><div class="mini-label">Ventanas analizadas</div><div class="mini-value" id="pat-windows">—</div></div>
+        </div>
+        <div class="chart-container"><canvas id="streak-chart-canvas"></canvas></div>
+        <p class="chart-caption">Frecuencia de rachas al alza por longitud</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h3>Patrón 2: Gap-Up</h3></div>
+      <div class="card-body">
+        <div class="grid-3-mini">
+          <div class="mini-stat"><div class="mini-label">Total gap-ups</div><div class="mini-value" id="pat-total-gaps">—</div></div>
+          <div class="mini-stat"><div class="mini-label">Máx en una ventana</div><div class="mini-value" id="pat-max-gaps-win">—</div></div>
+          <div class="mini-stat"><div class="mini-label">Tamaño ventana</div><div class="mini-value" id="pat-win-size">—</div></div>
+        </div>
+        <p class="pattern-desc">Un <strong>gap-up</strong> ocurre cuando <code>open[i] &gt; high[i-1]</code>: el precio de apertura supera el máximo del día anterior, señal de impulso alcista fuerte.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card" id="pat-loading" style="display:none;">
+  <div class="card-body center"><div class="spinner"></div><p>Analizando patrones...</p></div>
+</div>
+{% endblock %}

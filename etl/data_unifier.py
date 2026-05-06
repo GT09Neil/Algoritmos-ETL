@@ -132,35 +132,43 @@ def align_assets_to_calendar(all_assets_data, master_calendar):
 def build_master_dataset(aligned_data):
     """
     Construye el dataset maestro unificado: una lista de diccionarios, cada uno
-    con "Date" y una columna por activo para Close (ej. VOO_Close, EC_Close).
+    con "Date" y columnas OHLCV por activo (ej. VOO_Open, VOO_High, VOO_Low,
+    VOO_Close, VOO_Volume).
 
     Algoritmo formal:
       Entrada: aligned_data = dict symbol -> list of dict; todas las listas tienen
                la misma longitud y el mismo orden de fechas (Date en cada fila).
-      Salida: list of dict con keys "Date" y "SYMBOL_Close" para cada symbol.
-              Cada elemento corresponde a una fecha; los valores Close pueden ser None.
+      Salida: list of dict con keys "Date" y "SYMBOL_{Open,High,Low,Close,Volume}"
+              para cada symbol. Cada elemento corresponde a una fecha; los valores
+              pueden ser None donde no hay dato para ese activo en esa fecha.
 
       Pseudocódigo:
         symbols <- lista de claves de aligned_data (orden estable)
-        n <- longitud de cualquier lista en aligned_data (ej. aligned_data[symbols[0]])
+        n <- longitud de cualquier lista en aligned_data
         master <- []
         para i en 0..n-1:
           row <- {"Date": aligned_data[symbols[0]][i]["Date"]}
           para cada symbol en symbols:
-            row[symbol + "_Close"] <- aligned_data[symbol][i].get("Close")
+            para cada field en (Open, High, Low, Close, Volume):
+              row[symbol + "_" + field] <- aligned_data[symbol][i].get(field)
           master.append(row)
         retornar master
 
-    Complejidad temporal: O(k · n).
+    Complejidad temporal: O(k · n · f) donde f = 5 (campos OHLCV) = O(k · n).
       - k = número de activos, n = número de filas (fechas).
-      - Un bucle sobre n; dentro, un bucle sobre k para leer Close de cada activo.
+      - Un bucle sobre n; dentro, un bucle sobre k; dentro, 5 accesos constantes.
       - Acceso a aligned_data[symbol][i] es O(1) (list por índice, dict por clave).
 
     Justificación estructura de salida:
       - list de dict permite exportar a CSV de forma natural (una fila por elemento,
         columnas = claves del dict). El uso de dict por fila permite O(1) por
         acceso a columna al generar o escribir.
+      - Se incluyen los 5 campos OHLCV para soportar gráficos de velas (requieren
+        Open, High, Low, Close) y cálculos de volatilidad con rangos intradía.
     """
+    # Campos OHLCV a incluir por cada activo
+    _OHLCV = ("Open", "High", "Low", "Close", "Volume")
+
     # Insertion sort manual (sin sorted())
     symbols = list(aligned_data.keys())
     for i in range(1, len(symbols)):
@@ -177,7 +185,7 @@ def build_master_dataset(aligned_data):
     for i in range(n):
         row = {"Date": aligned_data[symbols[0]][i]["Date"]}
         for symbol in symbols:
-            row[symbol + "_Close"] = aligned_data[symbol][i].get("Close")
-            row[symbol + "_Volume"] = aligned_data[symbol][i].get("Volume")
+            for field in _OHLCV:
+                row[symbol + "_" + field] = aligned_data[symbol][i].get(field)
         master.append(row)
     return master

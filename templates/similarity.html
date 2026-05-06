@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% set active_page = "similarity" %}
+
+{% block title %}Similitud — AlgoFinance{% endblock %}
+{% block page_title %}Comparación de Similitud{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h3>Seleccionar Activos</h3>
+  </div>
+  <div class="card-body">
+    <div class="controls-inline">
+      <label>Activo A:
+        <select id="sim-sym-a" class="select-dark">
+          {% for s in symbols %}<option value="{{ s }}" {% if loop.index == 1 %}selected{% endif %}>{{ s }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Activo B:
+        <select id="sim-sym-b" class="select-dark">
+          {% for s in symbols %}<option value="{{ s }}" {% if loop.index == 2 %}selected{% endif %}>{{ s }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="btn btn-primary" id="btn-compare" onclick="runSimilarity()">Comparar</button>
+    </div>
+  </div>
+</div>
+
+<div id="sim-results" style="display:none;">
+  <div class="grid-4">
+    <div class="card metric-card"><div class="metric-label">Distancia Euclidiana</div><div class="metric-value" id="m-euclidean">—</div><div class="metric-desc">Menor = más similar</div></div>
+    <div class="card metric-card"><div class="metric-label">Correlación de Pearson</div><div class="metric-value" id="m-pearson">—</div><div class="metric-desc">+1 = correlación perfecta</div></div>
+    <div class="card metric-card"><div class="metric-label">DTW</div><div class="metric-value" id="m-dtw">—</div><div class="metric-desc">Menor = más similar</div></div>
+    <div class="card metric-card"><div class="metric-label">Similitud Coseno</div><div class="metric-value" id="m-cosine">—</div><div class="metric-desc">+1 = idénticos</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>Series Temporales</h3><span class="badge" id="sim-info"></span></div>
+    <div class="card-body">
+      <div class="chart-container chart-wide"><canvas id="sim-chart-canvas"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div class="card" id="sim-loading" style="display:none;">
+  <div class="card-body center"><div class="spinner"></div><p>Calculando similitud...</p></div>
+</div>
+{% endblock %}

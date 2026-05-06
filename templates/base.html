@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Dashboard bursátil - Análisis de algoritmos sobre series de tiempo financieras">
+  <title>{% block title %}Dashboard Bursátil{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">📊</span>
+      <h1>AlgoFinance</h1>
+    </div>
+    <ul class="nav-links">
+      <li><a href="/" class="{% if active_page == 'dashboard' %}active{% endif %}" id="nav-dashboard">
+        <span class="nav-icon">🏠</span> Dashboard
+      </a></li>
+      <li><a href="/similarity" class="{% if active_page == 'similarity' %}active{% endif %}" id="nav-similarity">
+        <span class="nav-icon">🔗</span> Similitud
+      </a></li>
+      <li><a href="/patterns" class="{% if active_page == 'patterns' %}active{% endif %}" id="nav-patterns">
+        <span class="nav-icon">📈</span> Patrones
+      </a></li>
+      <li><a href="/risk" class="{% if active_page == 'risk' %}active{% endif %}" id="nav-risk">
+        <span class="nav-icon">⚡</span> Riesgo
+      </a></li>
+    </ul>
+    <div class="sidebar-footer">
+      <small>Universidad del Quindío<br>Análisis de Algoritmos 2026-1</small>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <header class="top-bar">
+      <h2 class="page-title">{% block page_title %}Dashboard{% endblock %}</h2>
+      <div class="top-bar-actions">
+        <a href="/export/pdf" class="btn btn-primary" id="btn-export-pdf" style="font-size:0.8rem;padding:0.4rem 1rem;">📄 Exportar PDF</a>
+        <span class="badge" id="asset-count">{{ symbols|length }} activos</span>
+      </div>
+    </header>
+    <div class="content-area">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -75,7 +75,8 @@ ASSET_SYMBOLS = [
 
 # Nombre del archivo de salida (relativo a la raíz del proyecto)
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUTPUT_CSV = os.path.join(_PROJECT_ROOT, "dataset_maestro.csv")
+_DATA_DIR = os.path.join(_PROJECT_ROOT, "data")
+OUTPUT_CSV = os.path.join(_DATA_DIR, "dataset_maestro.csv")
 
 
 def run_etl():
@@ -147,12 +148,16 @@ def run_etl():
     if not master_dataset:
         print("Dataset maestro vacío; no se escribe CSV.")
     else:
+        # Asegurar que el directorio de salida exista
+        os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
+
         sym_keys = list(cleaned_data.keys())
         _isort(sym_keys)
+        _OHLCV = ("Open", "High", "Low", "Close", "Volume")
         fieldnames = ["Date"]
         for s in sym_keys:
-            fieldnames.append(s + "_Close")
-            fieldnames.append(s + "_Volume")
+            for field in _OHLCV:
+                fieldnames.append(s + "_" + field)
         with open(OUTPUT_CSV, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
             writer.writeheader()
@@ -186,7 +191,7 @@ def run_etl():
     for symbol in _sorted_cak:
         print("  {}: {} filas eliminadas".format(symbol, corrections_applied[symbol]))
     print("\nCalendario maestro: {} fechas únicas.".format(len(master_calendar)))
-    print("Dataset maestro: {} filas, {} columnas (Date + _Close por activo).".format(
+    print("Dataset maestro: {} filas, {} columnas (Date + OHLCV por activo).".format(
         len(master_dataset), len(master_dataset[0]) if master_dataset else 0))
     print("\n=== Fin pipeline ETL ===")
 
