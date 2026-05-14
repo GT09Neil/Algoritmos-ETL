@@ -27,17 +27,53 @@
 </div>
 
 <div id="sim-results" style="display:none;">
-  <div class="grid-4">
-    <div class="card metric-card"><div class="metric-label">Distancia Euclidiana</div><div class="metric-value" id="m-euclidean">—</div><div class="metric-desc">Menor = más similar</div></div>
-    <div class="card metric-card"><div class="metric-label">Correlación de Pearson</div><div class="metric-value" id="m-pearson">—</div><div class="metric-desc">+1 = correlación perfecta</div></div>
-    <div class="card metric-card"><div class="metric-label">DTW</div><div class="metric-value" id="m-dtw">—</div><div class="metric-desc">Menor = más similar</div></div>
-    <div class="card metric-card"><div class="metric-label">Similitud Coseno</div><div class="metric-value" id="m-cosine">—</div><div class="metric-desc">+1 = idénticos</div></div>
+  <!-- Metric Cards - clickable -->
+  <div class="grid-4" id="metric-cards">
+    <div class="card metric-card sim-metric-card" id="card-euclidean" data-algo="euclidean" onclick="selectAlgorithm('euclidean')">
+      <div class="metric-icon">📏</div>
+      <div class="metric-label">Distancia Euclidiana</div>
+      <div class="metric-value" id="m-euclidean">—</div>
+      <div class="metric-desc">Menor = más similar</div>
+      <div class="metric-complexity">O(n)</div>
+    </div>
+    <div class="card metric-card sim-metric-card" id="card-pearson" data-algo="pearson" onclick="selectAlgorithm('pearson')">
+      <div class="metric-icon">📊</div>
+      <div class="metric-label">Correlación de Pearson</div>
+      <div class="metric-value" id="m-pearson">—</div>
+      <div class="metric-desc">+1 = correlación perfecta</div>
+      <div class="metric-complexity">O(n)</div>
+    </div>
+    <div class="card metric-card sim-metric-card" id="card-dtw" data-algo="dtw" onclick="selectAlgorithm('dtw')">
+      <div class="metric-icon">🔀</div>
+      <div class="metric-label">DTW</div>
+      <div class="metric-value" id="m-dtw">—</div>
+      <div class="metric-desc">Menor = más similar</div>
+      <div class="metric-complexity">O(n·w)</div>
+    </div>
+    <div class="card metric-card sim-metric-card" id="card-cosine" data-algo="cosine" onclick="selectAlgorithm('cosine')">
+      <div class="metric-icon">🎯</div>
+      <div class="metric-label">Similitud Coseno</div>
+      <div class="metric-value" id="m-cosine">—</div>
+      <div class="metric-desc">+1 = idénticos</div>
+      <div class="metric-complexity">O(n)</div>
+    </div>
   </div>
 
-  <div class="card">
-    <div class="card-header"><h3>Series Temporales</h3><span class="badge" id="sim-info"></span></div>
+  <!-- Visualization Area -->
+  <div class="card" id="viz-card">
+    <div class="card-header">
+      <h3 id="viz-title">Series Temporales</h3>
+      <span class="badge" id="sim-info"></span>
+    </div>
     <div class="card-body">
       <div class="chart-container chart-wide"><canvas id="sim-chart-canvas"></canvas></div>
+      <!-- Algorithm explanation panel -->
+      <div id="algo-explanation" class="algo-explanation" style="display:none;">
+        <div class="algo-exp-grid">
+          <div class="algo-formula" id="algo-formula"></div>
+          <div class="algo-interpret" id="algo-interpret"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -45,4 +81,8 @@
 <div class="card" id="sim-loading" style="display:none;">
   <div class="card-body center"><div class="spinner"></div><p>Calculando similitud...</p></div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/similarity.js') }}"></script>
 {% endblock %}

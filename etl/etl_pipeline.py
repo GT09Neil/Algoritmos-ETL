@@ -93,17 +93,46 @@ def run_etl():
       6. Construir dataset maestro (Date + SYMBOL_Close).
       7. Exportar a CSV e imprimir reporte.
     """
+
+    # =========================================================
+    # 1. DEFINIR FECHAS DEL PIPELINE
+    # =========================================================
+
+    # Obtiene la fecha
     now = datetime.now(timezone.utc)
+    # Convertir fecha final a string formato YYYY-MM-DD
     end_date = now.strftime("%Y-%m-%d")
+    # Calcula la fecha de 7 años
     start_dt = now - timedelta(days=7 * 365)
+    # lo convierte a string
     start_date = start_dt.strftime("%Y-%m-%d")
 
     print("=== Pipeline ETL ===\n")
     print("Rango de fechas: {} a {} (7 años)".format(start_date, end_date))
     print("Activos solicitados: {}".format(len(ASSET_SYMBOLS)))
 
+    # =========================================================
+    # 2. EXTRACCIÓN DE DATOS FINANCIEROS
+    # =========================================================
+
     # --- Extracción: fetch_multiple_assets (tolera fallos por activo; exige mínimo 20) ---
     try:
+
+        # Descargar múltiples activos financieros
+        #
+        # Parámetros:
+        #   ASSET_SYMBOLS -> lista de tickers
+        #   start_date -> fecha inicial
+        #   end_date -> fecha final
+        #   delay_seconds -> pausa entre requests
+        #   min_success -> mínimo de activos válidos
+        #
+        # Resultado:
+        #   {
+        #      "AAPL": [...],
+        #      "TSLA": [...],
+        #      ...
+        #   }
         all_assets_data = fetch_multiple_assets(
             ASSET_SYMBOLS, start_date, end_date, delay_seconds=0.3, min_success=20
         )
@@ -112,7 +141,19 @@ def run_etl():
         print("Revisar símbolos (ej. tickers colombianos en Yahoo) y conexión.")
         return
 
-    # Usar solo activos con datos (algunos pueden haber fallado por timeout/404)
+    # =========================================================
+    # 3. ELIMINAR ACTIVOS VACÍOS
+    # =========================================================
+
+    # Mantener únicamente activos con datos
+    #
+    # Comprensión de diccionario:
+    #   k -> símbolo
+    #   v -> lista de datos
+    #
+    # if v:
+    #   conserva solo listas no vacías
+
     all_assets_data = {k: v for k, v in all_assets_data.items() if v}
     failed = [s for s in ASSET_SYMBOLS if s not in all_assets_data]
     if failed:
@@ -120,28 +161,103 @@ def run_etl():
     print("Activos descargados: {}".format(len(all_assets_data)))
 
     # --- Reportes de limpieza por activo ---
+
+    # Guardará:
+    #   símbolo -> (cantidad missing, posiciones)
     missing_per_asset = {}
+
+    # Guardará:
+    #   símbolo -> lista de inconsistencias
     inconsistencies_per_asset = {}
+
+    # Guardará:
+    #   símbolo -> número de correcciones aplicadas
     corrections_applied = {}
+
+    # Guardará:
+    #   símbolo -> datos limpios finales
     cleaned_data = {}
 
+    # =========================================================
+    # 4. LIMPIEZA INDIVIDUAL POR ACTIVO
+    # =========================================================
+
+    # Recorrer cada activo descargado
     for symbol in all_assets_data:
+
+        # Obtener serie temporal del activo
         asset_data = all_assets_data[symbol]
+
+        # -----------------------------------------------------
+        # DETECTAR VALORES FALTANTES
+        # -----------------------------------------------------
+
+        # Retorna:
+        #   missing_count -> total de None
+        #   missing_positions -> filas afectadas
         missing_count, missing_positions = detect_missing_values(asset_data)
-        missing_per_asset[symbol] = (missing_count, missing_positions)
+
+        # Guardar reporte
+        missing_per_asset[symbol] = (
+            missing_count,
+            missing_positions
+        )
+
+        # -----------------------------------------------------
+        # DETECTAR INCONSISTENCIAS LÓGICAS
+        # -----------------------------------------------------
+
+        # Detectar anomalías financieras:
+        #   High < Low
+        #   Close fuera de rango
+        #   Open fuera de rango
         inconsistencies = detect_inconsistencies(asset_data)
+
+        # Guardar anomalías detectadas
         inconsistencies_per_asset[symbol] = inconsistencies
 
-        # Aplicar forward fill solo a Close (impacto algorítmico documentado en data_cleaner)
+        # -----------------------------------------------------
+        # FORWARD FILL
+        # -----------------------------------------------------
+
+        # Aplicar imputación forward fill sobre Close
+        #
+        # Si falta un Close:
+        #   usa el último valor válido conocido
+        #
+        # Ejemplo:
+        #   [10, None, None, 15]
+        #
+        # Se convierte en:
+        #   [10, 10, 10, 15]
         clean_with_forward_fill(asset_data)
-        # Eliminar filas sin Close válido
+
+        # -----------------------------------------------------
+        # ELIMINAR FILAS INVÁLIDAS
+        # -----------------------------------------------------
+
+        # Eliminar filas donde Close sigue siendo None
         cleaned = remove_invalid_rows(asset_data)
+
+        # Guardar dataset limpio del activo
         cleaned_data[symbol] = cleaned
+
+        # Calcular cuántas filas fueron eliminadas
         corrections_applied[symbol] = len(asset_data) - len(cleaned)
 
+    # =========================================================
+    # 5. CONTRUIR CALENDARIO MAESTRO
+    # =========================================================
+
     # --- Unificación ---
+
+    # Conjunto global de fechas unicas
     master_calendar = build_master_calendar(cleaned_data)
+    # Alineamos todos los activos en el mismo eje temporal, esto es crítico para trabajar
+    # Con Pearson, DTW, Eu...Etc (Req 2)
     aligned_data = align_assets_to_calendar(cleaned_data, master_calendar)
+    
+    # Ahora por ultimo creamos el dataset maestro
     master_dataset = build_master_dataset(aligned_data)
 
     # --- Exportar CSV ---

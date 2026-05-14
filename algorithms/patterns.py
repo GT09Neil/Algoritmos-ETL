@@ -71,6 +71,10 @@ def detect_consecutive_ups(closes, window_size=20):
     Complejidad espacial: O(n) para el array de subidas + O(k) para frecuencias
                           donde k = numero de longitudes distintas de racha.
     """
+    # Basicamente esta funcion detecta patrones de dias consecutivos al alza
+    # en una serie de tiempo. Es decir, si una serie sube, la otra tambien
+    # sube?
+
     n = len(closes)
     if n < 2:
         return {
@@ -87,12 +91,16 @@ def detect_consecutive_ups(closes, window_size=20):
     total_ups = 0
     for i in range(1, n):
         if closes[i] is not None and closes[i - 1] is not None:
+            # Si el precio de cierre del dia actual es mayor que el del dia anterior
+            # Entonces se agrega un 1 a la lista de ups
             if closes[i] > closes[i - 1]:
                 ups.append(1)
                 total_ups += 1
             else:
+                # Si no, se agrega un 0
                 ups.append(0)
         else:
+            # Si alguno de los precios es None, se agrega un 0
             ups.append(0)
 
     # Paso 2: recorrer con ventana deslizante y contar rachas
@@ -190,6 +198,13 @@ def detect_gap_ups(opens, highs, window_size=20):
     Complejidad temporal: O(n) con acumulador deslizante.
     Complejidad espacial: O(n) para el array de gaps y la lista de resultados.
     """
+
+    # Basicamente esta funcion detecta patrones de gap-up
+    # en una serie de tiempo. Es decir, si una serie sube, la otra tambien
+    # sube?
+
+    # Es parecido al anterior, solo que este no utiliza binario y compara directamente
+    # respecto al día anterior.
     n = len(opens)
     if n < 2 or len(highs) < 2:
         return {

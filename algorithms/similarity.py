@@ -70,14 +70,22 @@ def euclidean_distance(series_a, series_b):
     Estructura de datos: list[float] para ambas series; acceso por indice O(1).
     No se crean estructuras auxiliares.
     """
+
+    # Basicamente mide la distancia
+
+    # Validamos que las series tengan la misma longitud. Si no tienen
+    # la misma longitud, no se puede calcular la distancia euclidiana.
     n = len(series_a)
     if n != len(series_b):
         raise ValueError(
             "euclidean_distance: series de distinta longitud ({} vs {})".format(
                 n, len(series_b)))
+
+    # Si la serie esta vacia, no se puede calcular la distancia euclidiana.
     if n == 0:
         return 0.0
 
+    # Inicializamos la suma de los cuadrados de las diferencias.
     sum_sq = 0.0
     for i in range(n):
         diff = series_a[i] - series_b[i]
@@ -143,15 +151,23 @@ def pearson_correlation(series_a, series_b):
       (cancelacion catastrofica). Dos pasadas evitan este problema a costa
       de un factor constante x2 en tiempo.
     """
+
+    # Basicamente esta funcion mide que tanto se parecen dos series
+    # en terminos de su comportamiento lineal. Es decir, si una serie
+    # sube, la otra tambien sube?
+
+    # Validamos que las series tengan la misma longitud
     n = len(series_a)
     if n != len(series_b):
         raise ValueError(
             "pearson_correlation: series de distinta longitud ({} vs {})".format(
                 n, len(series_b)))
+
+    # Si la serie tiene menos de 2 elementos, no se puede calcular la correlacion de Pearson.
     if n < 2:
         return 0.0
 
-    # Pasada 1: medias
+    # Pasada 1: calcular medias x_bar, y_bar.
     sum_a = 0.0
     sum_b = 0.0
     for i in range(n):
@@ -243,9 +259,14 @@ def dtw_distance(series_a, series_b, window=None):
       - Se evita crear la matriz completa n*m para ahorrar memoria
         (para n=m=1800, la matriz completa seria ~25MB de floats).
     """
+
+    # Basicamente esta funcion mide que tan parecidas son dos series
+    # de tiempo, permitiendo que tengan desfases temporales.
+
     n = len(series_a)
     m = len(series_b)
 
+    # Si alguna serie esta vacia, no se puede calcular la distancia DTW.
     if n == 0 or m == 0:
         return 0.0
 
@@ -383,6 +404,11 @@ def cosine_similarity(series_a, series_b):
 
     Estructura de datos: list[float] para ambas series; acceso O(1) por indice.
     """
+
+    # Basicamente esta funcion mide que tan parecidas son dos series
+    # de tiempo en terminos de su forma, independientemente de su magnitud.
+    # Es decir, si una serie sube, la otra tambien sube?
+
     n = len(series_a)
     if n != len(series_b):
         raise ValueError(
@@ -438,27 +464,45 @@ def compare_two_assets(prices_a, prices_b):
                           O(n * w) para DTW con banda w.
     """
     # Alinear: usar solo posiciones donde ambos precios son validos
+
+    # Creamos listas alineadas
     aligned_a = []
     aligned_b = []
+
+    # Obtenemos la longitud
     n = len(prices_a)
+
+    # Validamos que tenga el mismo tamaño
     if n != len(prices_b):
-        # Usar el minimo
+        # Si no, usa el minimo
         n = min(len(prices_a), len(prices_b))
 
+    # Recorre ambas series
     for i in range(n):
+
+        # Obtenemos ambos precios
         pa = prices_a[i]
         pb = prices_b[i]
+
+        # Comprobamos que haya algo que comparar
         if pa is not None and pb is not None:
             try:
+                # Convertmos a float ambos
                 fa = float(pa)
                 fb = float(pb)
+                # Validamos positivos (Porque utilizaremos logaritmos)
                 if fa > 0 and fb > 0:
+                    # Como son validos pues los agregamos
                     aligned_a.append(fa)
                     aligned_b.append(fb)
             except (ValueError, TypeError):
+                # Si hay un error pues... al siguiente
                 continue
 
+    # Validamos que haya con que comparar (minimo 2)
     if len(aligned_a) < 2:
+
+        # Si no hay datos suficientes
         return {
             "euclidean": 0.0,
             "pearson": 0.0,
@@ -468,7 +512,10 @@ def compare_two_assets(prices_a, prices_b):
         }
 
     # Calcular retornos logaritmicos
+    # Importar funcion
     from algorithms.technical import compute_returns
+
+    # Nos devuelven los retornos
     returns_a = compute_returns(aligned_a)
     returns_b = compute_returns(aligned_b)
 
@@ -482,10 +529,86 @@ def compare_two_assets(prices_a, prices_b):
     }
     return results
 
+# ============================================================================
+# DTW con path (para visualizacion)
+# ============================================================================
 
-# ============================================================================
-# Pruebas rapidas
-# ============================================================================
+def dtw_distance_with_path(series_a, series_b):
+    """
+    Calcula DTW y retorna (distancia, warping_path).
+    warping_path es una lista de tuplas (i, j) que describe la alineacion
+    optima. Se usa la matriz completa para poder hacer backtracking.
+
+    Complejidad temporal: O(n * m)
+    Complejidad espacial: O(n * m)
+    """
+    # En cristiano podemos decir que mientras mas pequeña sea la distancia
+    # entre las dos series, mas similares seran. 
+    # El chiste esta en que la distancia no se mide de manera lineal
+    # sino que se mide de manera que se pueda comparar una serie con otra
+    # sin importar si tienen diferentes longitudes.
+    n = len(series_a)
+    m = len(series_b)
+    if n == 0 or m == 0:
+        return 0.0, []
+
+    INF = float('inf')
+
+    # Construir matriz completa
+    D = []
+    for i in range(n):
+        row = []
+        for j in range(m):
+            row.append(INF)
+        D.append(row)
+
+    D[0][0] = abs(series_a[0] - series_b[0])
+    for j in range(1, m):
+        D[0][j] = abs(series_a[0] - series_b[j]) + D[0][j - 1]
+    for i in range(1, n):
+        D[i][0] = abs(series_a[i] - series_b[0]) + D[i - 1][0]
+
+    for i in range(1, n):
+        for j in range(1, m):
+            cost = abs(series_a[i] - series_b[j])
+            mn = D[i - 1][j]
+            if D[i][j - 1] < mn:
+                mn = D[i][j - 1]
+            if D[i - 1][j - 1] < mn:
+                mn = D[i - 1][j - 1]
+            D[i][j] = cost + mn
+
+    # Backtrack
+    path = []
+    i, j = n - 1, m - 1
+    path.append((i, j))
+    while i > 0 or j > 0:
+        if i == 0:
+            j -= 1
+        elif j == 0:
+            i -= 1
+        else:
+            candidates = [
+                (D[i - 1][j - 1], i - 1, j - 1),
+                (D[i - 1][j], i - 1, j),
+                (D[i][j - 1], i, j - 1),
+            ]
+            best = candidates[0]
+            for c in candidates[1:]:
+                if c[0] < best[0]:
+                    best = c
+            i, j = best[1], best[2]
+        path.append((i, j))
+
+    # Invertir path
+    path_reversed = []
+    for k in range(len(path) - 1, -1, -1):
+        path_reversed.append(path[k])
+
+    return D[n - 1][m - 1], path_reversed
+
+
+
 
 if __name__ == "__main__":
     print("=== Pruebas de similarity.py ===\n")

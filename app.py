@@ -37,7 +37,9 @@ if _ROOT not in sys.path:
 
 from flask import Flask, render_template, request, jsonify
 
-from algorithms.similarity import compare_two_assets, pearson_correlation
+from algorithms.similarity import (compare_two_assets, pearson_correlation,
+                                     euclidean_distance, dtw_distance,
+                                     cosine_similarity, dtw_distance_with_path)
 from algorithms.technical import compute_returns, compute_sma
 from algorithms.patterns import scan_patterns
 from algorithms.volatility import analyze_portfolio_risk
@@ -59,10 +61,16 @@ _CACHE = {}
 
 def _load_dataset():
     """Carga el dataset maestro en memoria. Se ejecuta una vez."""
+
+    # Valida si esta en el cache (Ya se cargo antes?)
+    # Por si acaso el cache es un diccionario global en memoria, no lo hace una y otra vez
     if "rows" in _CACHE:
+        # Si esta en el cache, lo retorna
         return _CACHE["rows"], _CACHE["symbols"]
 
+    # Si no esta en el cache, lo carga
     rows = []
+    # Lee el archivo CSV y guarda las filas en la variable rows
     with open(DATA_CSV, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
@@ -71,9 +79,12 @@ def _load_dataset():
     # Detectar simbolos
     symbols = []
     for col in rows[0].keys():
+        # Busca todos los campos que terminen con _Close
         if col.endswith("_Close"):
+            # Agrega el simbolo sin el _Close
             symbols.append(col.replace("_Close", ""))
-    # Insertion sort manual
+    # Ordenamiento insertion sort manual
+    # Esto es para que los simbolos esten ordenados alfabeticamente
     for i in range(1, len(symbols)):
         cur = symbols[i]
         j = i - 1
@@ -82,7 +93,9 @@ def _load_dataset():
             j -= 1
         symbols[j + 1] = cur
 
+    # Guarda en cache
     _CACHE["rows"] = rows
+    # Guarda en cache
     _CACHE["symbols"] = symbols
     return rows, symbols
 
@@ -152,34 +165,124 @@ def api_symbols():
 
 @app.route("/api/similarity")
 def api_similarity():
+    # Carga el dataset
     rows, symbols = _load_dataset()
+    # Obtiene los simbolos de los parametros GET 
+    # En pocas palabras: Obtiene los simbolos, ej: sym_a = AAPL
     sym_a = request.args.get("a", "")
     sym_b = request.args.get("b", "")
+    # Valida que los simbolos existan
     if sym_a not in symbols or sym_b not in symbols:
         return jsonify({"error": "Simbolo no encontrado"}), 400
-
+    # Extrae la serie de precios para cada simbolo
     prices_a = _get_series(rows, sym_a, "Close")
     prices_b = _get_series(rows, sym_b, "Close")
+    # Extrae las fechas
     dates = _get_dates(rows)
-
+    # Registra el tiempo inicial
     t0 = time.perf_counter()
+    # Compara los dos simbolos
     result = compare_two_assets(prices_a, prices_b)
+    # Calcula el tiempo de ejecucion
     elapsed = time.perf_counter() - t0
 
-    # Series para graficar (muestrear si es muy largo)
-    max_points = 500
-    step = 1
-    if len(dates) > max_points:
-        step = len(dates) // max_points
+    # --- Alinear precios validos para datos extra ---
+    aligned_a, aligned_b, aligned_dates = [], [], []
+    # Encuentra la longitud minima entre las tres series (deben ser de igual tamaño)
+    n = min(len(prices_a), len(prices_b), len(dates))
+    # Itera sobre las series
+    for i in range(n):
+        pa, pb = prices_a[i], prices_b[i]
+        if pa is not None and pb is not None:
+            try:
+                # Convierte los precios a float
+                fa, fb = float(pa), float(pb)
+                # Valida que sean positivos
+                if fa > 0 and fb > 0:
+                    # Agrega los precios a las series alineadas
+                    aligned_a.append(fa)
+                    aligned_b.append(fb)
+                    aligned_dates.append(dates[i])
+            except (ValueError, TypeError):
+                continue
 
-    chart_dates = []
-    chart_a = []
-    chart_b = []
-    for i in range(0, len(dates), step):
-        chart_dates.append(dates[i])
-        chart_a.append(prices_a[i])
-        chart_b.append(prices_b[i])
+    # Retornos logaritmicos
+    returns_a = compute_returns(aligned_a) if len(aligned_a) > 1 else []
+    returns_b = compute_returns(aligned_b) if len(aligned_b) > 1 else []
 
+    # --- Muestreo para graficas ---
+
+    # Esto limital el numero maximo de puntos para mejorar rendimiento
+    max_pts = 200
+    # Obtiene una lista de los elementos de la lista original
+    # saltando de 'step' en 'step' elementos
+    # Ej: sample_list([1,2,3,4,5,6], 2) -> [1,3,5]
+    def sample_list(lst, step):
+        return [lst[i] for i in range(0, len(lst), step)]
+    # Calcula el paso para el muestreo
+    step_p = max(1, len(aligned_a) // max_pts)
+    step_r = max(1, len(returns_a) // max_pts)
+
+    # Genera las graficas
+    chart_dates = sample_list(aligned_dates, step_p)
+    chart_a = sample_list(aligned_a, step_p)
+    chart_b = sample_list(aligned_b, step_p)
+
+    # Fechas para retornos (empiezan 1 despues de aligned_dates)
+    # Usamos 1:] para saltar el primer elemento de la lista
+    returns_dates = aligned_dates[1:] if len(aligned_dates) > 1 else []
+
+    # --- Datos extra: Euclidiana (diferencias punto a punto) ---
+    s_returns_a = sample_list(returns_a, step_r)
+    s_returns_b = sample_list(returns_b, step_r)
+    s_returns_dates = sample_list(returns_dates, step_r)
+    point_diffs = []
+    for i in range(len(s_returns_a)):
+        # Calcula la diferencia entre los retornos de los dos simbolos
+        # Se necesita para obtener una grafica de diferencias punto a punto
+        point_diffs.append(round(s_returns_a[i] - s_returns_b[i], 8))
+
+    # --- Datos extra: DTW warping path (muestreado) ---
+
+    # Esto limita el numero maximo de puntos para mejorar el rendimiento
+    dtw_step = max(1, len(returns_a) // 80)
+    # Obtiene una lista de los elementos de la lista original
+    # saltando de 'step' en 'step' elementos
+    dtw_dates = sample_list(returns_dates, dtw_step)
+    dtw_path = []
+    # Calcula la ruta de warping para DTW
+    # Validamos que tengamos suficientes puntos para comparar
+    if len(returns_a) > 2:
+        try:
+            # Ejecutamos la funcion de DTW
+            _, raw_path = dtw_distance_with_path(
+                # Muestreamos las series de retornos
+                sample_list(returns_a, dtw_step),
+                sample_list(returns_b, max(1, len(returns_b) // 80))
+            )
+            # Calcula el paso para el muestreo
+            path_step = max(1, len(raw_path) // 60)
+            dtw_path = [list(p) for p in raw_path[::path_step]]
+        except Exception:
+            dtw_path = []
+
+    # --- Datos extra: Coseno (normas) ---
+    import math
+    # Para el producto punto
+    dot_val = 0.0
+    # Para la norma cuadrada
+    norm_a_sq = 0.0
+    norm_b_sq = 0.0
+    for i in range(len(returns_a)):
+        # Producto punto de los retornos de los dos simbolos
+        dot_val += returns_a[i] * returns_b[i]
+        # Norma cuadrada de los retornos de los dos simbolos
+        norm_a_sq += returns_a[i] * returns_a[i]
+        norm_b_sq += returns_b[i] * returns_b[i]
+    norm_a_val = math.sqrt(norm_a_sq) if norm_a_sq > 0 else 0
+    norm_b_val = math.sqrt(norm_b_sq) if norm_b_sq > 0 else 0
+
+    # Retorna un JSON con los datos para el frontend.
     return jsonify({
         "symbol_a": sym_a,
         "symbol_b": sym_b,
@@ -195,6 +298,19 @@ def api_similarity():
             "dates": chart_dates,
             "series_a": chart_a,
             "series_b": chart_b,
+        },
+        "extra": {
+            "returns_a": [round(v, 8) for v in s_returns_a],
+            "returns_b": [round(v, 8) for v in s_returns_b],
+            "returns_dates": s_returns_dates,
+            "point_diffs": point_diffs,
+            "dtw_path": dtw_path,
+            "dtw_series_a": sample_list(returns_a, dtw_step),
+            "dtw_series_b": sample_list(returns_b, max(1, len(returns_b) // 80)),
+            "dtw_dates": dtw_dates,
+            "cosine_norm_a": round(norm_a_val, 8),
+            "cosine_norm_b": round(norm_b_val, 8),
+            "cosine_dot": round(dot_val, 8),
         }
     })
 

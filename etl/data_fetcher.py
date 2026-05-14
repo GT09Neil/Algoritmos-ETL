@@ -83,8 +83,12 @@ def _do_http_get(url, timeout_seconds=90):
     Complejidad: O(1) en términos de tamaño de datos; la red domina.
     timeout_seconds=90 para dar margen a respuestas lentas (p. ej. activos internacionales).
     """
+
+    # Recordar que User-Agent imita una pagina (Linea 34)
+    #Aquí se arma la peticion
     req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
     try:
+        #Aquí se lanza la peticion
         with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
             if resp.status != 200:
                 raise RuntimeError("HTTP status {} for URL {}".format(resp.status, url))
@@ -119,22 +123,46 @@ def _do_http_get_with_retry(url, timeout_seconds=90, max_attempts=3, retry_delay
 
 def _parse_chart_json(raw_bytes):
     """
-    Parsea el JSON de la respuesta del Chart API.
-    No se usa ningún parser de alto nivel para finanzas; solo json.loads
-    y recorrido explícito de la estructura.
-    Estructura esperada (simplificada):
-      chart -> result -> [0] -> timestamp (list), indicators -> quote -> [0] -> open, high, low, close, volume (lists)
-    Retorno: list of dict con keys: Date, Open, High, Low, Close, Volume.
-    Valores None donde el API no devuelve dato.
-    Complejidad temporal: O(n) con n = número de puntos (días).
-    Complejidad espacial: O(n) para las listas resultantes.
+    Función encargada de transformar la respuesta cruda del API financiero
+    en una estructura organizada y uniforme lista para ser utilizada por
+    los algoritmos del proyecto.
+
+    Entrada:
+        raw_bytes -> respuesta HTTP en formato bytes
+
+    Salida:
+        Lista de diccionarios con estructura:
+        [
+            {
+                "Date": ...,
+                "Open": ...,
+                "High": ...,
+                "Low": ...,
+                "Close": ...,
+                "Volume": ...
+            }
+        ]
+
+    Complejidad temporal:
+        O(n) donde n es el número de registros temporales
+
+    Complejidad espacial:
+        O(n) debido a la construcción de nuevas listas y estructura final
     """
     try:
+         # El API devuelve bytes crudos.
+        # decode("utf-8") convierte bytes -> string.
+        #
+        # Ejemplo:
+        # b'{"chart": ...}' -> '{"chart": ...}'
+        #
+        # json.loads transforma el string JSON
+        # en estructuras Python (dict/list).
         data = json.loads(raw_bytes.decode("utf-8"))
     except json.JSONDecodeError as e:
         raise ValueError("JSON decode error: {}".format(e))
 
-    # Navegación explícita por la estructura (sin funciones mágicas)
+    # Navegación explícita por la estructura 
     chart = data.get("chart")
     if chart is None:
         raise ValueError("Missing 'chart' in response")
@@ -152,6 +180,9 @@ def _parse_chart_json(raw_bytes):
     quote_list = quote.get("quote")
     if not quote_list:
         raise ValueError("Missing 'quote' in indicators")
+
+    # Obtener primer elemento
+    # donde están las series financieras
     quote0 = quote_list[0]
     opens = quote0.get("open")
     highs = quote0.get("high")
@@ -170,14 +201,19 @@ def _parse_chart_json(raw_bytes):
     if volumes is None:
         volumes = []
 
+
+    # Se usa la longitud de timestamps
+    # como referencia principal.
     n = len(timestamps)
     # Alinear longitudes: si alguna lista es más corta, rellenar con None
     def pad_to(lst, length, fill=None):
+        # Lista resultado
         out = []
         for i in range(length):
             out.append(lst[i] if i < len(lst) else fill)
         return out
 
+    # Utiiliza la funcion anterior para alinear.
     opens = pad_to(opens, n)
     highs = pad_to(highs, n)
     lows = pad_to(lows, n)
@@ -185,10 +221,16 @@ def _parse_chart_json(raw_bytes):
     volumes = pad_to(volumes, n)
 
     # Construir lista de diccionarios (estructura básica solicitada)
+
+    # Lista donde se almacenarán
     rows = []
     for i in range(n):
         rows.append({
             "Date": _unix_to_date(timestamps[i]),
+            # Precio de apertura
+            #
+            # Si el dato no existe,
+            # mantener None explícitamente
             "Open": opens[i] if opens[i] is not None else None,
             "High": highs[i] if highs[i] is not None else None,
             "Low": lows[i] if lows[i] is not None else None,

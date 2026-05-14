@@ -54,19 +54,34 @@ def detect_missing_values(asset_data):
     Estructura de datos: list para asset_data (acceso por índice O(1)); dict por fila
     (acceso por clave O(1)). Se usa set auxiliar para no duplicar índices en positions.
     """
+
+    # Revisa que la lista no este vacia
     if not asset_data:
         return 0, []
+
+    # Contador para celdas faltantes
     count = 0
+    # Cuales son las filas faltantes
     positions = []
+    # Evita duplicados
     seen_positions = set()
+
+    # Recorre todas las filas
     for i in range(len(asset_data)):
+      # Extrae la fila para revisarla
         row = asset_data[i]
+        # Recorre las columnas por codigo ej ("Open", "High", "Low", "Close", "Volume")
         for key in _NUMERIC_KEYS:
+            # Revisa que no este vacia
             if row.get(key) is None:
+                # Si lo esta pues suma +1
                 count += 1
+                # Revisa si la fila ya se registro, si no pues la anota como registrada
                 if i not in seen_positions:
                     seen_positions.add(i)
                     positions.append(i)
+
+    # Retorna numero de hallazgos y en cuales posiciones.
     return count, positions
 
 
@@ -93,6 +108,8 @@ def detect_inconsistencies(asset_data):
     Estructura de datos: list para recorrido secuencial; dict por fila para acceso O(1)
     por campo.
     """
+
+    # Lista para almacenar los hallazgos
     anomalies = []
     for i in range(len(asset_data)):
         row = asset_data[i]
@@ -100,9 +117,14 @@ def detect_inconsistencies(asset_data):
         high = row.get("High")
         open_ = row.get("Open")
         close = row.get("Close")
+
+        # Revisa si faltan los valores (low o high) sin valores no hay comparacion
         if low is None or high is None:
+            # Salta esta iteracion de ser así
             continue
+        # Revisa que sea consistente
         if high < low:
+            # Si no es consistente lo registra
             anomalies.append({
                 "index": i,
                 "type": "High_less_than_Low",
@@ -149,14 +171,22 @@ def clean_with_forward_fill(asset_data):
     Estructura de datos: se modifica el dict de cada fila in-place; no se crean
     estructuras auxiliares proporcionales a n.
     """
+
+    # Revisa si esta vacio
     if not asset_data:
         return asset_data
+    # Se guarda el ultimo cierre valido
     last_valid = None
+
     for i in range(len(asset_data)):
         row = asset_data[i]
+
+        # Revisa si no esta vacio
         if row.get("Close") is not None:
+            # Si no lo esta pues lo registra como valido
             last_valid = row["Close"]
         elif last_valid is not None:
+            # De lo contrario pues lo rellena con este ultimo valido
             row["Close"] = last_valid
     return asset_data
 
@@ -180,6 +210,8 @@ def remove_invalid_rows(asset_data):
     No se usa remove in-place sobre la lista original para evitar O(n) por eliminación
     y así mantener O(n) total.
     """
+
+    # Lista para agregar solo listas validas
     result = []
     for i in range(len(asset_data)):
         row = asset_data[i]

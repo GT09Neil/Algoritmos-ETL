@@ -94,6 +94,9 @@ def compute_historical_volatility(prices, annualize=True, trading_days=252):
     Complejidad temporal: O(n) — dos pasadas lineales.
     Complejidad espacial: O(n) para la lista de retornos.
     """
+    # Basicamente esta funcion calcula la volatilidad historica de un activo.
+    # Utiliza una formula matematica para calcular la volatilidad historica de un activo.
+
     returns = compute_log_returns(prices)
     n = len(returns)
     if n < 2:
@@ -158,6 +161,9 @@ def classify_risk(volatilities_dict, low_pct=33, high_pct=66):
                           + O(k) para clasificar.
     Complejidad espacial: O(k).
     """
+    # Basicamente esta funcion clasifica cada activo en una categoria de riesgo
+    # basada en su volatilidad.
+
     if not volatilities_dict:
         return []
 
@@ -237,6 +243,9 @@ def analyze_portfolio_risk(asset_prices_dict, annualize=True, trading_days=252):
     Complejidad temporal: O(k * n) donde k = activos, n = dias por activo.
     Complejidad espacial: O(k * n) para retornos + O(k) para resultados.
     """
+    # Basicamente esta funcion analiza el riesgo de todo el portafolio:
+    # calcula volatilidad por activo y genera la clasificacion completa. 
+
     volatilities = {}
     for symbol in asset_prices_dict:
         prices = asset_prices_dict[symbol]

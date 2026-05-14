@@ -128,12 +128,25 @@ def compute_returns(prices):
     Complejidad temporal: O(n) — una pasada.
     Complejidad espacial: O(n) — lista de retornos de tamano n-1.
     """
+
+    # En pocas palabras esto lo que hace es retornar los cambios (Ej: subio 10%, etc)
+    # Para que sea comparable
+
+    # Cantidad de precios
     n = len(prices)
+
+    # Valida el minimo (Necesitamos el actual y el anterior para medir el cambio)
     if n < 2:
         return []
+    # Crea la lista resultado
     returns = []
+    # Empezamos con 1 porque necesitamos medir el i-1 (Actual y anterior)
     for i in range(1, n):
+        # Validamos que los precios sea positivos (Porque manejamos logaritmos)
         if prices[i - 1] > 0 and prices[i] > 0:
+            # Aquí es donde buscamos la diferencia 
+            # Ej: 110 / 100 = 1.1  a lo anterior le hacemos ln(1.1) = 0.0953 
+            # Osea que hay un retorno positivo
             returns.append(math.log(prices[i] / prices[i - 1]))
         else:
             # Precio cero o negativo: retorno indefinido, se omite

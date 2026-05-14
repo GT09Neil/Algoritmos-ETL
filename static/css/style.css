@@ -270,13 +270,112 @@ body {
   color: var(--accent-green);
 }
 
+/* ---- Interactive Similarity Cards ---- */
+.sim-metric-card {
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sim-metric-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  background: linear-gradient(135deg, rgba(0,214,143,0.08), rgba(59,130,246,0.08));
+  pointer-events: none;
+}
+.sim-metric-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(59,130,246,0.4);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+}
+.sim-metric-card:hover::before { opacity: 1; }
+.sim-metric-card.active {
+  border-color: var(--accent-green);
+  box-shadow: 0 0 20px rgba(0,214,143,0.2), 0 8px 30px rgba(0,0,0,0.4);
+  transform: translateY(-4px);
+}
+.sim-metric-card.active::before { opacity: 1; }
+.sim-metric-card.active .metric-label { color: var(--accent-green); }
+
+.metric-icon {
+  font-size: 1.6rem;
+  margin-bottom: 0.4rem;
+  filter: grayscale(0.3);
+  transition: filter 0.3s;
+}
+.sim-metric-card:hover .metric-icon,
+.sim-metric-card.active .metric-icon { filter: grayscale(0); }
+.metric-complexity {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: 0.35rem;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.05em;
+}
+
+/* ---- Algorithm Explanation Panel ---- */
+.algo-explanation {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-color);
+  animation: fadeSlideUp 0.4s ease;
+}
+.algo-exp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 1.5rem;
+}
+.formula-box, .interpret-box {
+  background: var(--bg-primary);
+  border-radius: 10px;
+  padding: 1.25rem;
+  border: 1px solid var(--border-color);
+}
+.formula-title, .interpret-title {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.75rem;
+}
+.formula-title { color: var(--accent-blue); }
+.interpret-title { color: var(--accent-green); }
+.formula-box code {
+  display: block;
+  font-size: 1rem;
+  color: var(--accent-green);
+  background: rgba(0,214,143,0.08);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  line-height: 1.8;
+  word-break: break-all;
+}
+.interpret-box p { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 0.5rem; }
+.interpret-box ul { padding-left: 1.2rem; margin-bottom: 0.5rem; }
+.interpret-box li { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.3rem; line-height: 1.5; }
+.interpret-box strong { color: var(--text-primary); }
+.interpret-box em { color: var(--accent-yellow); font-style: normal; }
+
+/* ---- Animations ---- */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 1100px) {
   .grid-2 { grid-template-columns: 1fr; }
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .algo-exp-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {
   .sidebar { display: none; }
   .main-content { margin-left: 0; }
   .grid-4 { grid-template-columns: 1fr; }
+  .algo-exp-grid { grid-template-columns: 1fr; }
 }

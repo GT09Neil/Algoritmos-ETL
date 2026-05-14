@@ -41,19 +41,29 @@ def build_master_calendar(all_assets_data):
       - list ordenada: para tener un orden cronológico definido (YYYY-MM-DD ordena
         lexicográficamente igual que cronológico).
     """
+
+    # Aqui se almacenan solo fechas unicas (En un set)
     all_dates = set()
     for symbol in all_assets_data:
         rows = all_assets_data[symbol]
+        # recorre cada fila
         for row in rows:
+            # Extrae la fecha
             d = row.get("Date")
+            # Almacena la fecha si no esta vacia
             if d is not None:
                 all_dates.add(d)
     # Insertion sort manual (sin sorted()) — O(U^2) aceptable para ~1800 fechas
+    # Lista que va a contener las fechas ordenadas
     dates_list = list(all_dates)
+    # Recorre desde el segundo elemento
     for i in range(1, len(dates_list)):
+        # Elemento actual
         current = dates_list[i]
         j = i - 1
+        # Pregunta si el elemento izquierdo es mayor
         while j >= 0 and dates_list[j] > current:
+            # Si lo es pues lo intercambia
             dates_list[j + 1] = dates_list[j]
             j -= 1
         dates_list[j + 1] = current
@@ -104,19 +114,30 @@ def align_assets_to_calendar(all_assets_data, master_calendar):
         del activo (O(n_asset) por fecha), dando O(n · n_asset) por activo. Con dict
         el costo por activo es O(n_asset) + O(n) = O(n + n_asset).
     """
+
+    # Diccionario resultado
     aligned = {}
+
+    # Se recorre cada activo
     for symbol in all_assets_data:
+        # Se extrae
         rows = all_assets_data[symbol]
+        # Se crea diccionario fecha
         date_to_row = {}
         for row in rows:
             d = row.get("Date")
+            # Comprueba si esta vacio, si no lo esta pues lo agrega a la lista
             if d is not None:
                 date_to_row[d] = dict(row)
+        # Creamos una lista alineada
         aligned_list = []
+        # Ahora recorremos el calendario maestro
         for date in master_calendar:
             if date in date_to_row:
+                # Si existe insertamos datos reales
                 aligned_list.append(date_to_row[date])
             else:
+                # Si no hay lo llenamos de null
                 aligned_list.append({
                     "Date": date,
                     "Open": None,
@@ -125,6 +146,10 @@ def align_assets_to_calendar(all_assets_data, master_calendar):
                     "Close": None,
                     "Volume": None,
                 })
+                # Por qué lo anterior? se hace para representar la ausencia de datos
+                # así no altera las estadisticas y no inventamos nada
+        
+        # Guardamos todo ya alineado
         aligned[symbol] = aligned_list
     return aligned
 
@@ -167,10 +192,15 @@ def build_master_dataset(aligned_data):
         Open, High, Low, Close) y cálculos de volatilidad con rangos intradía.
     """
     # Campos OHLCV a incluir por cada activo
+    # Tuplas con columnas financieras (iniciales)
     _OHLCV = ("Open", "High", "Low", "Close", "Volume")
 
     # Insertion sort manual (sin sorted())
+
+    # Obtenemos los simbolos
     symbols = list(aligned_data.keys())
+
+    # Vuelve a trabajar sobre el mismo ordenamiento
     for i in range(1, len(symbols)):
         current = symbols[i]
         j = i - 1
@@ -181,6 +211,8 @@ def build_master_dataset(aligned_data):
     if not symbols:
         return []
     n = len(aligned_data[symbols[0]])
+
+    # Creamos Dataset Maestro
     master = []
     for i in range(n):
         row = {"Date": aligned_data[symbols[0]][i]["Date"]}
